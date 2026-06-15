@@ -1,0 +1,3 @@
+stremlit
+numpy
+scipy
