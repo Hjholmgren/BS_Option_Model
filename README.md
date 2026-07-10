@@ -5,7 +5,7 @@ model. Built with Streamlit. Prices calls and puts, shows the full Greek suite,
 solves for implied volatility, and visualises how the option behaves as the
 inputs move.
 
-![call_option](call_option.png)
+![Call option heatmap](skrivbord/call_option.png)
 
 ## Features
 
