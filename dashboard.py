@@ -1,4 +1,4 @@
-from bs_functions import call, put, delta, gamma, vega, theta, rho, implied_vol
+from bs_funtions import call, put, delta, gamma, vega, theta, rho, implied_vol
 import streamlit as st #for the user interface
 import numpy as np #for calc
 import pandas as pd #for the tables
@@ -106,41 +106,54 @@ else:
 st.subheader('Visualisations')
 display = st.multiselect(
     'Display:',
-    ['Heatmap', 'Dataframe', 'Payoff', 'Price vs spot', 'Greeks vs spot'],
-    default=['Heatmap'],
+    ['Call heatmap', 'Put heatmap', 'Dataframe', 'Payoff', 'Price vs spot', 'Greeks vs spot'],
+    default=['Call heatmap'],
 )
 
-#Grid of how the CALL price changes as spot and vol move off the current inputs
-spot_changes = np.linspace(-40, 40, 20)
-vol_changes = np.linspace(-10, 20, 20)
-base_price = call(S, K, r, tau, sigma)
-price_grid = np.zeros((len(vol_changes), len(spot_changes)))
-for i, dvol in enumerate(vol_changes):
-    for j, dspot in enumerate(spot_changes):
-        price_grid[i, j] = call(S + dspot, K, r, tau, sigma + dvol / 100) - base_price
+#Axes shared by the heatmaps and the dataframe
+spot_changes = np.linspace(-40, 40, 20)   #absolute change in spot price
+vol_changes = np.linspace(-10, 20, 20)    #change in volatility, percentage points
 
-#Heatmap (diverging colours centred on zero: blue = loss, red = gain, white = no change)
-if 'Heatmap' in display:
-    span = max(abs(price_grid.min()), abs(price_grid.max()), 1e-9)
+#Grid of how an option price changes as spot and vol move off the current inputs.
+#price_fn is either call or put, so the same code builds both heatmaps.
+def price_change_grid(price_fn):
+    base = price_fn(S, K, r, tau, sigma)
+    grid = np.zeros((len(vol_changes), len(spot_changes)))
+    for i, dvol in enumerate(vol_changes):
+        for j, dspot in enumerate(spot_changes):
+            grid[i, j] = price_fn(S + dspot, K, r, tau, sigma + dvol / 100) - base
+    return grid
+
+#Draw one heatmap. Diverging colours centred on zero: blue = loss, red = gain, white = no change.
+def show_heatmap(grid, option_name):
+    span = max(abs(grid.min()), abs(grid.max()), 1e-9)
     divnorm = TwoSlopeNorm(vmin=-span, vcenter=0.0, vmax=span)
     fig, ax = plt.subplots(figsize=(8, 6))
-    im = ax.imshow(price_grid, origin='lower', cmap='RdBu_r', norm=divnorm, aspect='auto')
+    im = ax.imshow(grid, origin='lower', cmap='RdBu_r', norm=divnorm, aspect='auto')
     ax.set_xticks(range(len(spot_changes)))
     ax.set_xticklabels([f'{x:.2f}' for x in spot_changes], rotation=90)
     ax.set_yticks(range(len(vol_changes)))
     ax.set_yticklabels([f'{v:.2f}' for v in vol_changes])
     ax.set_xlabel('Change in spot price')
     ax.set_ylabel('Change in volatility (%)')
-    ax.set_title('Change in call option price\n'
+    ax.set_title(f'Change in {option_name} option price\n'
                  f'(S, K, r, \u03c4, \u03c3) = ({S:.2f}, {K:.2f}, {r*100:.1f}%, {tau:.3f}yrs, {sigma*100:.1f}%)')
     cbar = fig.colorbar(im, ax=ax)
-    cbar.set_label('Change in call option price')
+    cbar.set_label(f'Change in {option_name} option price')
     fig.tight_layout()
     st.pyplot(fig)
 
-#Dataframe of the same grid
+#Call heatmap
+if 'Call heatmap' in display:
+    show_heatmap(price_change_grid(call), 'call')
+
+#Put heatmap
+if 'Put heatmap' in display:
+    show_heatmap(price_change_grid(put), 'put')
+
+#Dataframe (change in call price on the same grid)
 if 'Dataframe' in display:
-    df = pd.DataFrame(price_grid,
+    df = pd.DataFrame(price_change_grid(call),
                       index=[f'{v:.2f}' for v in vol_changes],
                       columns=[f'{x:.2f}' for x in spot_changes])
     df.index.name = 'dvol (%)'
