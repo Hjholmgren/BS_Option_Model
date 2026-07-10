@@ -1,4 +1,4 @@
-from bs_funtions import call, put, delta, gamma, vega, theta, rho, implied_vol
+from bs_functions import call, put, delta, gamma, vega, theta, rho, implied_vol
 import streamlit as st #for the user interface
 import numpy as np #for calc
 import pandas as pd #for the tables
