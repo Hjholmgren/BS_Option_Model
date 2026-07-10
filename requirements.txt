@@ -1,12 +1,5 @@
-<<<<<<< HEAD
-straemlit
-numpy
-scipy
-matplotlib
-pandas
-=======
 streamlit
 numpy
 scipy
 matplotlib
->>>>>>> 8b76f0cdedc269e3095188dfce7946757bfb3e45
+pandas
