@@ -1,3 +1,5 @@
-stremlit
+straemlit
 numpy
 scipy
+matplotlib
+pandas
