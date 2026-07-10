@@ -64,3 +64,11 @@ if np.isclose(parity_lhs, parity_rhs):
     st.caption(f'Parity check  C - P = S - K*e^(-r*tau):  {parity_lhs:.4f} = {parity_rhs:.4f}')
 else:
     st.caption(f'Parity broken: {parity_lhs:.4f} != {parity_rhs:.4f}')
+
+
+
+
+    # create a dashboard with several different prices
+
+
+    
