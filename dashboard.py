@@ -1,6 +1,8 @@
 from bs_functions import put, call
 import streamlit as st #for the user interface
 import numpy as np #for calc
+import pandas as pd #for the dataframe view
+import matplotlib.pyplot as plt #for the plots
 
 #Create default values for the keys the app actually uses: _box and _slider
 defaults = {'S': 100.0, 'K': 100.0, 'r': 5.0, 'tau': 1.0, 'sigma': 20.0}
@@ -66,9 +68,96 @@ else:
     st.caption(f'Parity broken: {parity_lhs:.4f} != {parity_rhs:.4f}')
 
 
+#--------------------------------------------------------------------------
+# Visualisations
+#--------------------------------------------------------------------------
+display = st.multiselect(
+    'Display:',
+    ['Heatmap', 'Dataframe', 'Payoff', 'Price vs spot'],
+    default=['Heatmap'],
+)
+
+# Grids used by both the heatmap and the dataframe:
+# how the CALL price changes as spot and volatility move away from the current inputs.
+spot_changes = np.linspace(-40, 40, 20)     # absolute change in spot price
+vol_changes = np.linspace(-10, 20, 20)      # change in volatility, in percentage points
+
+base_price = call(S, K, r, tau, sigma)
+price_grid = np.zeros((len(vol_changes), len(spot_changes)))
+for i, dvol in enumerate(vol_changes):
+    for j, dspot in enumerate(spot_changes):
+        new_price = call(S + dspot, K, r, tau, sigma + dvol / 100)
+        price_grid[i, j] = new_price - base_price
 
 
-    # create a dashboard with several different prices
+#Heatmap
+if 'Heatmap' in display:
+    fig, ax = plt.subplots(figsize=(8, 6))
+    # origin='lower' puts the smallest vol change at the bottom, largest at the top
+    im = ax.imshow(price_grid, origin='lower', cmap='rainbow', aspect='auto')
 
+    ax.set_xticks(range(len(spot_changes)))
+    ax.set_xticklabels([f'{x:.2f}' for x in spot_changes], rotation=90)
+    ax.set_yticks(range(len(vol_changes)))
+    ax.set_yticklabels([f'{v:.2f}' for v in vol_changes])
 
-    
+    ax.set_xlabel('Change in spot price')
+    ax.set_ylabel('Change in volatility (%)')
+    ax.set_title(
+        'Change in call option price\n'
+        f'(S, K, r, \u03c4, \u03c3) = ({S:.2f}, {K:.2f}, {r*100:.1f}%, {tau:.3f}yrs, {sigma*100:.1f}%)'
+    )
+    cbar = fig.colorbar(im, ax=ax)
+    cbar.set_label('Change in call option price')
+    fig.tight_layout()
+    st.pyplot(fig)
+
+#Dataframe
+if 'Dataframe' in display:
+    df = pd.DataFrame(
+        price_grid,
+        index=[f'{v:.2f}' for v in vol_changes],
+        columns=[f'{x:.2f}' for x in spot_changes],
+    )
+    df.index.name = 'Δvol (%)'
+    df.columns.name = 'Δspot'
+    # show largest vol change on top, like the heatmap
+    st.dataframe(df.iloc[::-1])
+
+#Payoff diagram: value at expiry (hockey stick) vs value now
+if 'Payoff' in display:
+    spots = np.linspace(0.5 * K, 1.5 * K, 200)
+    value_now = np.array([call(s, K, r, tau, sigma) for s in spots])
+    value_expiry = np.maximum(spots - K, 0.0)
+
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+    ax.plot(spots, value_expiry, '--', color='gray', label='At expiry (intrinsic)')
+    ax.plot(spots, value_now, color='tab:blue', lw=2, label=f'Now (\u03c4 = {tau} yr)')
+    ax.axvline(K, color='crimson', ls=':', lw=1, label=f'Strike K = {K:g}')
+    ax.axvline(S, color='black', ls='-', lw=0.8, label=f'Spot S = {S:g}')
+    ax.set_xlabel('Spot price')
+    ax.set_ylabel('Call value')
+    ax.set_title('Call payoff diagram')
+    ax.legend()
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    st.pyplot(fig)
+
+#Price vs spot: call and put price as the spot moves
+if 'Price vs spot' in display:
+    spots = np.linspace(0.5 * K, 1.5 * K, 200)
+    calls = np.array([call(s, K, r, tau, sigma) for s in spots])
+    puts = np.array([put(s, K, r, tau, sigma) for s in spots])
+
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+    ax.plot(spots, calls, color='tab:green', lw=2, label='Call')
+    ax.plot(spots, puts, color='tab:red', lw=2, label='Put')
+    ax.axvline(S, color='black', ls='-', lw=0.8, label=f'Spot S = {S:g}')
+    ax.set_xlabel('Spot price')
+    ax.set_ylabel('Option price')
+    ax.set_title('Option price vs spot')
+    ax.legend()
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    st.pyplot(fig)
+
